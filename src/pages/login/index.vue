@@ -7,7 +7,7 @@
           src="../../assets/images/logo.png"
           style="border-radius: 10px; width: 80px; height: 80px"
         />
-        <span class="title">通用中后台管理系统</span>
+        <span class="title">找大夫在线</span>
       </div>
       <div class="right-wrapper">
         <el-form :model="loginForm" :rules="loginRules" ref="loginRef">
@@ -44,6 +44,9 @@
           <el-form-item style="text-align: center">
             <el-link target="_blank" @click="openRegisterDlg"
               >没有账户？注册一个！</el-link
+            >
+            <el-link target="_blank" @click="openRegisterDlg"
+            >忘记密码？</el-link
             >
           </el-form-item>
         </el-form>
@@ -89,30 +92,18 @@
                 prefix-icon="el-icon-lock"
               ></el-input>
             </el-form-item>
-            <el-form-item style="margin-top: 20px" prop="nickname">
-              <el-input
-                v-model="registerForm.nickname"
-                size="large"
-                style="width: 300px"
-                placeholder="昵称"
-                prefix-icon="el-icon-lock"
-              ></el-input>
-            </el-form-item>
-            <el-form-item style="margin-top: 20px" prop="sign">
-              <el-input
-                v-model="registerForm.sign"
-                size="large"
-                style="width: 300px"
-                placeholder="签名"
-                prefix-icon="el-icon-lock"
-              ></el-input>
+            <el-form-item style="margin-top: 20px" prop="character_type">
+              <el-radio-group v-model="registerForm.character_type">
+                <el-radio label="1">我是病人</el-radio>
+                <el-radio label="2">我是医生</el-radio>
+              </el-radio-group>
             </el-form-item>
             <el-form-item style="margin-top: 30px">
               <el-button
                 type="primary"
                 style="width: 100%"
                 size="large"
-                @click="handleRegister"
+                @click="applyRegister"
                 >注册</el-button
               >
             </el-form-item>
@@ -128,19 +119,22 @@
                 type="primary"
                 style="width: 33%"
                 size="large"
-                @click="handleActive"
+                @click="activeUser"
                 >验证</el-button
               >
             </el-form-item>
           </el-form>
         </div>
       </el-dialog>
+
+      <!--重设密码窗口-->
+
     </div>
   </div>
 </template>
 
 <script>
-import { doLogin, doRegister, activeUser } from "../../api/login";
+import { login, applyRegister, activeUser } from "../../api/login";
 export default {
   name: "login",
   data() {
@@ -177,8 +171,7 @@ export default {
         email: "",
         password: "",
         repassword: "",
-        nickname: "",
-        sign: "",
+        character_type: 1,
         active_code: "",
       },
       loginRules: {
@@ -193,8 +186,6 @@ export default {
         repassword: [
           { required: true, validator: validateTwoPass, trigger: "blur" },
         ],
-        nickname: [{ max: 20, message: "昵称过长", trigger: "blur" }],
-        sign: [{ max: 50, message: "签名过长", trigger: "blur" }],
       },
     };
   },
@@ -204,64 +195,56 @@ export default {
       this.$refs["loginRef"].validate((valid) => {
         if (!valid) {
           return;
-        } else {
-          let params = {
-            email: this.loginForm.email,
-            password: this.loginForm.password,
-          };
-          doLogin(params).then((res) => {
-            if (res.code === 200) {
-              localStorage.setItem("token", res.data.token);
-              this.$router.push("/dashboard");
-            } else {
-              this.$message.error(res.msg);
-              return;
-            }
-          });
         }
+        let params = {
+          email: this.loginForm.email,
+          password: this.loginForm.password,
+        };
+        login(params).then((res) => {
+          if (res.code === 200) {
+            localStorage.setItem("id", res.data.user_id);
+            localStorage.setItem("character_type", res.data.character_type);
+            localStorage.setItem("token", res.data.token);
+            this.$router.push("/home");
+          } else {
+            this.$message.error(res.msg);
+          }
+        });
       });
     },
     openRegisterDlg() {
       this.isRegisterDlgVisiable = true;
     },
-    handleRegister() {
+    applyRegister() {
       this.$refs["registerRef"].validate((valid) => {
         if (!valid) {
           return;
-        } else {
-          let params = {
-            email: this.registerForm.email,
-            password: this.registerForm.password,
-            nickname: this.registerForm.nickname,
-            sign: this.registerForm.sign,
-          };
-          doRegister(params).then((res) => {
-            if (res.code === 200) {
-              this.$message.success(
-                "注册成功，验证码已发到您的邮箱，请在5分钟内输入验证码激活账号"
-              );
-              return;
-            } else {
-              this.$message.error(res.msg);
-              return;
-            }
-          });
         }
+        let params = {
+          email: this.registerForm.email,
+        };
+        applyRegister(params).then((res) => {
+          if (res.code === 200) {
+            this.$message.success("注册成功，验证码已发到您的邮箱，请在5分钟内输入验证码激活账号");
+          } else {
+            this.$message.error(res.msg);
+          }
+        });
       });
     },
-    handleActive() {
+    activeUser() {
       let params = {
         email: this.registerForm.email,
+        password: this.registerForm.password,
+        character_type: this.registerForm.character_type,
         active_code: this.registerForm.active_code,
       };
       activeUser(params).then((res) => {
         if (res.code === 200) {
           this.$message.error("验证成功！");
           this.isRegisterDlgVisiable = false;
-          return;
         } else {
           this.$message.success(res.msg);
-          return;
         }
       });
     },
